@@ -101,6 +101,13 @@ def _get_flux_range(product_id: int,
         rows = cursor.fetchall()
         for row in rows:
             row['quantite'] = float(row['quantite'])
+                # date_flux est déjà un objet date Python — pas besoin de conversion
+                # MAIS pour generate_stock_curve on compare avec str(current)
+                # donc on convertit ici
+            if hasattr(row['date_flux'], 'isoformat'):
+                row['date_flux_str'] = row['date_flux'].isoformat()
+            else:
+                row['date_flux_str'] = str(row['date_flux'])
         return rows
     finally:
         cursor.close()

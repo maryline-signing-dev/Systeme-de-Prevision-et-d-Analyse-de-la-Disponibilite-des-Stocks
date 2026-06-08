@@ -1,4 +1,5 @@
 from ..database import get_connection
+from ..utils.serializer import serialize_row, serialize_row
 
 def get_all_produits():
     conn = get_connection()
@@ -12,13 +13,7 @@ def get_all_produits():
             WHERE actif = TRUE
             ORDER BY nom_produit
         """)
-        rows = cursor.fetchall()
-        # Convertir les types non sérialisables
-        for row in rows:
-            row['stock_initial']       = float(row['stock_initial'])
-            row['seuil_alerte']        = float(row['seuil_alerte'])
-            row['date_initialisation'] = str(row['date_initialisation'])
-        return rows
+        return serialize_row(cursor.fetchall())
     finally:
         cursor.close()
         conn.close()
@@ -35,12 +30,7 @@ def get_produit_by_id(id_produit: int):
             FROM produit
             WHERE id_produit = %s AND actif = TRUE
         """, (id_produit,))
-        row = cursor.fetchone()
-        if row:
-            row['stock_initial']       = float(row['stock_initial'])
-            row['seuil_alerte']        = float(row['seuil_alerte'])
-            row['date_initialisation'] = str(row['date_initialisation'])
-        return row
+        return serialize_row(cursor.fetchall())
     finally:
         cursor.close()
         conn.close()

@@ -1,5 +1,6 @@
 from ..database import get_connection
 from ..constants import STATUT_REALISE
+from ..utils.serializer import serialize_row, serialize_rows
 
 def get_flux_by_produit(id_produit: int):
     conn = get_connection()
@@ -14,14 +15,7 @@ def get_flux_by_produit(id_produit: int):
             WHERE id_produit = %s
             ORDER BY date_flux DESC, ordre_execution ASC
         """, (id_produit,))
-        rows = cursor.fetchall()
-        for row in rows:
-            row['quantite']    = float(row['quantite'])
-            row['date_flux']   = str(row['date_flux'])
-            row['date_saisie'] = str(row['date_saisie'])
-            if row['heure_flux']:
-                row['heure_flux'] = str(row['heure_flux'])
-        return rows
+        return serialize_rows(cursor.fetchall())
     finally:
         cursor.close()
         conn.close()
@@ -38,14 +32,7 @@ def get_flux_by_id(id_flux: int):
                    date_saisie
             FROM flux WHERE id_flux = %s
         """, (id_flux,))
-        row = cursor.fetchone()
-        if row:
-            row['quantite']    = float(row['quantite'])
-            row['date_flux']   = str(row['date_flux'])
-            row['date_saisie'] = str(row['date_saisie'])
-            if row['heure_flux']:
-                row['heure_flux'] = str(row['heure_flux'])
-        return row
+        return serialize_rows(cursor.fetchall())
     finally:
         cursor.close()
         conn.close()
