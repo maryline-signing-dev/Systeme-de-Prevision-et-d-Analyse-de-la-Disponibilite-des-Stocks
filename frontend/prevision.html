@@ -9,6 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
           rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -240,6 +242,49 @@
 
             <!-- Résultats -->
             <div id="zone-resultats" style="display:none;">
+
+                <!-- Graphique temporel -->
+                <div class="result-box mb-3"
+                     id="bloc-graphique"
+                     style="display:none;">
+                    <div class="d-flex justify-content-between
+                                align-items-center mb-3">
+                        <h6 class="fw-bold mb-0">
+                            <i class="bi bi-graph-up text-primary
+                                      me-2"></i>
+                            Évolution Temporelle du Stock
+                        </h6>
+                        <!-- Sélecteur de période -->
+                        <div class="d-flex gap-2 align-items-center">
+                            <select class="form-select form-select-sm"
+                                    style="width:auto;"
+                                    id="sel-periode"
+                                    onchange="changerPeriode()">
+                                <option value="30">30 jours</option>
+                                <option value="60" selected>60 jours</option>
+                                <option value="90">90 jours</option>
+                                <option value="180">6 mois</option>
+                                <option value="365">1 an</option>
+                            </select>
+                            <button class="btn btn-outline-secondary
+                                           btn-sm"
+                                    onclick="actualiserGraphique()"
+                                    title="Actualiser">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Chart.js -->
+                    <div class="chart-container">
+                        <canvas id="stockChart"></canvas>
+                    </div>
+
+                    <!-- Annotations ruptures -->
+                    <div class="mt-2 d-flex flex-wrap align-items-center gap-1"
+                         id="chart-ruptures">
+                    </div>
+                </div>
 
                 <!-- Bloc résumé -->
                 <div class="result-box mb-3" id="bloc-resume">
@@ -564,6 +609,8 @@ async function calculer() {
     }
 
     afficherResultats(result.data, type, dateCible);
+    // Déclencher le graphique automatiquement
+    await lancerGraphique();
 }
 
 // ---- Afficher les résultats ----
@@ -784,6 +831,40 @@ function afficherDecomposition(fluxAppliques, unite) {
     }).join('');
 }
 
+// ---- Lancer le graphique ----
+async function lancerGraphique() {
+    const idProduit = document.getElementById('sel-produit').value;
+    if (!idProduit) return;
+
+    const jours   = parseInt(
+        document.getElementById('sel-periode').value
+    );
+    const today   = new Date();
+    const debut   = new Date(today);
+    debut.setDate(debut.getDate() - Math.floor(jours / 3));
+    const fin     = new Date(today);
+    fin.setDate(fin.getDate() + Math.ceil(jours * 2 / 3));
+
+    const dateFrom = debut.toISOString().split('T')[0];
+    const dateTo   = fin.toISOString().split('T')[0];
+
+    // Afficher le bloc
+    document.getElementById('bloc-graphique').style.display = 'block';
+
+    await renderStockChart(idProduit, dateFrom, dateTo, 'stockChart');
+}
+
+// ---- Changer la période ----
+async function changerPeriode() {
+    await lancerGraphique();
+}
+
+// ---- Actualiser le graphique ----
+async function actualiserGraphique() {
+    await lancerGraphique();
+}
+
 </script>
+<script src="js/charts.js"></script>
 </body>
 </html>
