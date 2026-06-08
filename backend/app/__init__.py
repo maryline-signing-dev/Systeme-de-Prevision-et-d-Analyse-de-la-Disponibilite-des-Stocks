@@ -25,4 +25,5 @@ def create_app():
     app.register_blueprint(produits_bp, url_prefix='/api/produits')
     app.register_blueprint(flux_bp,     url_prefix='/api/flux')
     app.register_blueprint(prevision_bp, url_prefix='/api/prevision')
+    
     return app
