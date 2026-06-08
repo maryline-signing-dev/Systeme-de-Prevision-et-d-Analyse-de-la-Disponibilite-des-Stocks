@@ -340,11 +340,11 @@ def generate_stock_curve(product_id: int,
         d = str(flux['date_flux'])
         flux_par_date.setdefault(d, []).append(flux)
 
-    labels         = []
-    values         = []
-    ruptures       = []
-    stock          = produit['stock_initial']
-    current        = date_from
+    labels        = []
+    values        = []
+    ruptures      = []
+    stock         = produit['stock_initial']
+    current       = date_from
 
     while current <= date_to:
         d_str = str(current)
