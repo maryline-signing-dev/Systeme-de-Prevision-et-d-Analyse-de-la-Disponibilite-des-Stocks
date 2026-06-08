@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produits — SIPDS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+          rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand fw-bold" href="dashboard.html">
+            <span>Prévision des Stocks</span>
+        </a>
+        <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-3">
+            <a class="nav-link text-white" href="dashboard.html">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+            <a class="nav-link text-white active fw-semibold"
+               href="produits.html">
+                <i class="bi bi-grid-3x3-gap me-1"></i> Produits
+            </a>
+            <a class="nav-link text-white" href="prevision.html">
+                <i class="bi bi-graph-up-arrow me-1"></i> Prévision
+            </a>
+            <span class="text-white small opacity-75">
+                <i class="bi bi-person-circle me-1"></i>
+                <span id="admin-name">Admin</span>
+            </span>
+            <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                <i class="bi bi-box-arrow-right me-1"></i> Déconnexion
+            </button>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">
+            <i class="bi bi-grid-3x3-gap me-2 text-primary"></i>
+            Gestion des Produits
+        </h4>
+        <button class="btn btn-primary"
+                onclick="ouvrirModalCreer()">
+            <i class="bi bi-plus-circle me-1"></i> Nouveau Produit
+        </button>
+    </div>
+
+    <!-- Tableau des produits -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div id="zone-chargement" class="text-center py-4">
+                <div class="spinner-border text-primary"></div>
+            </div>
+            <table class="table table-hover mb-0"
+                   id="table-produits" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nom du produit</th>
+                        <th>Catégorie</th>
+                        <th>Marque</th>
+                        <th>Stock initial</th>
+                        <th>Date init.</th>
+                        <th>Unité</th>
+                        <th>Seuil alerte</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-produits"></tbody>
+            </table>
+            <div id="zone-vide" class="text-center py-5"
+                 style="display:none;">
+                <i class="bi bi-inbox text-muted"
+                   style="font-size:3rem;"></i>
+                <p class="text-muted mt-2">
+                    Aucun produit. Créer le premier produit.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL CRÉER / MODIFIER ===== -->
+<div class="modal fade" id="modalProduit" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="modal-titre">
+                    Nouveau Produit
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal"> Nouveau Produit </button>
+            </div>
+            <div class="modal-body">
+                <div id="alert-modal"></div>
+                <form id="form-produit" novalidate>
+                    <input type="hidden" id="id-produit-edit">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Nom du produit *
+                        </label>
+                        <input type="text" class="form-control"
+                               id="nom_produit" required
+                               placeholder="Ex: Ciment CEM II 42.5">
+                        <div class="invalid-feedback">
+                            Le nom est requis.
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">
+                                Catégorie
+                            </label>
+                            <input type="text" class="form-control"
+                                   id="categorie"
+                                   placeholder="Ex: Matériaux">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">
+                                Marque
+                            </label>
+                            <input type="text" class="form-control"
+                                   id="marque"
+                                   placeholder="Ex: CIMENCAM">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mt-1">
+                        <div class="col-6">
+                            <label for="stock_initial" class="form-label fw-semibold">
+                                Stock initial *
+                            </label>
+                            <input type="number" class="form-control"
+                                   id="stock_initial"
+                                   min="0" step="0.01"
+                                   value="0" required>
+                        </div>
+                        <div class="col-6">
+                            <label for="date_initialisation" class="form-label fw-semibold">
+                                Date initialisation *
+                            </label>
+                            <input type="date" class="form-control"
+                                   id="date_initialisation" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mt-1">
+                        <div class="col-6">
+                            <label for="unite" class="form-label fw-semibold">
+                                Unité
+                            </label>
+                            <select class="form-select" id="unite">
+                                <option value="unite">unité</option>
+                                <option value="sac">sac</option>
+                                <option value="carton">carton</option>
+                                <option value="barre">barre</option>
+                                <option value="bidon">bidon</option>
+                                <option value="rouleau">rouleau</option>
+                                <option value="kg">kg</option>
+                                <option value="litre">litre</option>
+                                <option value="m2">m²</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label for="seuil_alerte" class="form-label fw-semibold">
+                                Seuil d'alerte
+                            </label>
+                            <input type="number" class="form-control"
+                                   id="seuil_alerte"
+                                   min="0" step="0.01" value="0">
+                            <div class="form-text">
+                                Alerte si stock ≤ cette valeur
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary"
+                        id="btn-sauvegarder"
+                        onclick="sauvegarderProduit()">
+                    <i class="bi bi-check-lg me-1"></i>
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MODAL CONFIRMATION SUPPRESSION ===== -->
+<div class="modal fade" id="modalSupprimer" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmer</h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p>Supprimer le produit
+                    <strong id="nom-produit-supprimer"></strong> ?
+                </p>
+                <p class="text-muted small">
+                    Cette action est irréversible.
+                    Impossible si des flux existent.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm"
+                        data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger btn-sm"
+                        id="btn-confirmer-suppr"
+                        onclick="confirmerSuppression()">
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="alert-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script>
+
+let modalProduit  = null;
+let modalSupprimer = null;
+let idASupprimer  = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    modalProduit   = new bootstrap.Modal(
+        document.getElementById('modalProduit'));
+    modalSupprimer = new bootstrap.Modal(
+        document.getElementById('modalSupprimer'));
+
+    // Date par défaut = aujourd'hui
+    document.getElementById('date_initialisation').value =
+        new Date().toISOString().split('T')[0];
+
+    chargerProduits();
+});
+
+// ---- Charger la liste ----
+async function chargerProduits() {
+    document.getElementById('zone-chargement').style.display = 'block';
+    document.getElementById('table-produits').style.display  = 'none';
+    document.getElementById('zone-vide').style.display       = 'none';
+
+    const result = await apiCall('/produits/');
+    document.getElementById('zone-chargement').style.display = 'none';
+
+    if (!result || !result.success) {
+        showAlert('Erreur lors du chargement des produits.', 'danger');
+        return;
+    }
+
+    const produits = result.data;
+
+    if (produits.length === 0) {
+        document.getElementById('zone-vide').style.display = 'block';
+        return;
+    }
+
+    document.getElementById('table-produits').style.display = 'table';
+    document.getElementById('tbody-produits').innerHTML =
+        produits.map(p => `
+            <tr>
+                <td class="text-muted">${p.id_produit}</td>
+                <td class="fw-semibold">${p.nom_produit}</td>
+                <td>${p.categorie || '—'}</td>
+                <td>${p.marque || '—'}</td>
+                <td>${p.stock_initial} ${p.unite}</td>
+                <td>${formatDate(p.date_initialisation)}</td>
+                <td>
+                    <span class="badge bg-secondary">
+                        ${p.unite}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge ${
+                        p.seuil_alerte > 0 ? 'bg-warning text-dark'
+                                           : 'bg-light text-dark border'}">
+                        ${p.seuil_alerte}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <a href="flux.html?id=${p.id_produit}"
+                       class="btn btn-outline-primary btn-action me-1"
+                       title="Voir les flux">
+                        <i class="bi bi-list-ul"></i>
+                    </a>
+                    <a href="prevision.html?id=${p.id_produit}"
+                       class="btn btn-outline-success btn-action me-1"
+                       title="Prévision">
+                        <i class="bi bi-graph-up"></i>
+                    </a>
+                    <button class="btn btn-outline-secondary btn-action me-1"
+                            onclick="ouvrirModalModifier(${p.id_produit})"
+                            title="Modifier">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-action"
+                            onclick="ouvrirModalSupprimer(${p.id_produit},
+                                     '${p.nom_produit.replace(/'/g, "\\'")}')"
+                            title="Supprimer">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>`).join('');
+}
+
+// ---- Ouvrir modal CRÉER ----
+function ouvrirModalCreer() {
+    document.getElementById('modal-titre').textContent = 'Nouveau Produit';
+    document.getElementById('form-produit').reset();
+    document.getElementById('form-produit').classList.remove('was-validated');
+    document.getElementById('id-produit-edit').value = '';
+    document.getElementById('date_initialisation').value =
+        new Date().toISOString().split('T')[0];
+    document.getElementById('alert-modal').innerHTML = '';
+    modalProduit.show();
+}
+
+// ---- Ouvrir modal MODIFIER ----
+async function ouvrirModalModifier(id) {
+    document.getElementById('modal-titre').textContent = 'Modifier le Produit';
+    document.getElementById('alert-modal').innerHTML = '';
+
+    const result = await apiCall(`/produits/${id}`);
+    if (!result || !result.success) {
+        showAlert('Impossible de charger le produit.', 'danger');
+        return;
+    }
+
+    const p = result.data;
+    document.getElementById('id-produit-edit').value    = p.id_produit;
+    document.getElementById('nom_produit').value        = p.nom_produit;
+    document.getElementById('categorie').value          = p.categorie   || '';
+    document.getElementById('marque').value             = p.marque      || '';
+    document.getElementById('stock_initial').value      = p.stock_initial;
+    document.getElementById('date_initialisation').value = p.date_initialisation;
+    document.getElementById('unite').value              = p.unite;
+    document.getElementById('seuil_alerte').value       = p.seuil_alerte;
+    modalProduit.show();
+}
+
+// ---- Sauvegarder (créer ou modifier) ----
+async function sauvegarderProduit() {
+    const form = document.getElementById('form-produit');
+    form.classList.add('was-validated');
+    if (!form.checkValidity()) return;
+
+    const id = document.getElementById('id-produit-edit').value;
+    const data = {
+        nom_produit        : document.getElementById('nom_produit').value.trim(),
+        categorie          : document.getElementById('categorie').value.trim(),
+        marque             : document.getElementById('marque').value.trim(),
+        stock_initial      : parseFloat(document.getElementById('stock_initial').value),
+        date_initialisation: document.getElementById('date_initialisation').value,
+        unite              : document.getElementById('unite').value,
+        seuil_alerte       : parseFloat(document.getElementById('seuil_alerte').value)
+    };
+
+    const estModif  = id !== '';
+    const endpoint  = estModif ? `/produits/${id}` : '/produits/';
+    const methode   = estModif ? 'PUT' : 'POST';
+
+    document.getElementById('btn-sauvegarder').disabled = true;
+    const result = await apiCall(endpoint, methode, data);
+    document.getElementById('btn-sauvegarder').disabled = false;
+
+    if (result && result.success) {
+        modalProduit.hide();
+        showAlert(
+            estModif ? 'Produit mis à jour.' : 'Produit créé.',
+            'success'
+        );
+        chargerProduits();
+    } else {
+        document.getElementById('alert-modal').innerHTML = `
+            <div class="alert alert-danger small p-2">
+                ${result?.message || 'Erreur lors de l\'enregistrement.'}
+            </div>`;
+    }
+}
+
+// ---- Ouvrir modal SUPPRIMER ----
+function ouvrirModalSupprimer(id, nom) {
+    idASupprimer = id;
+    document.getElementById('nom-produit-supprimer').textContent = nom;
+    modalSupprimer.show();
+}
+
+// ---- Confirmer suppression ----
+async function confirmerSuppression() {
+    document.getElementById('btn-confirmer-suppr').disabled = true;
+    const result = await apiCall(`/produits/${idASupprimer}`, 'DELETE');
+    document.getElementById('btn-confirmer-suppr').disabled = false;
+
+    modalSupprimer.hide();
+
+    if (result && result.success) {
+        showAlert('Produit supprimé.', 'success');
+        chargerProduits();
+    } else {
+        showAlert(
+            result?.message || 'Erreur lors de la suppression.',
+            'danger'
+        );
+    }
+}
+
+</script>
+</body>
+</html>

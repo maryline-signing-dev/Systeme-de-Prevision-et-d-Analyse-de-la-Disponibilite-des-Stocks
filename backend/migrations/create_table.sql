@@ -20,10 +20,10 @@ CREATE TABLE IF NOT EXISTS produit (
     nom_produit         VARCHAR(200)  NOT NULL,
     categorie           VARCHAR(100)  NULL,
     marque              VARCHAR(100)  NULL,
-    stock_initial       DECIMAL(10,2) NOT NULL DEFAULT 0,
+    stock_initial       DECIMALINT NOT NULL DEFAULT 0,
     date_initialisation DATE          NOT NULL,
     unite               VARCHAR(20)   NOT NULL DEFAULT 'unite',
-    seuil_alerte        DECIMAL(10,2) NOT NULL DEFAULT 0,
+    seuil_alerte        INT NOT NULL DEFAULT 0,
     actif               BOOLEAN       NOT NULL DEFAULT TRUE,
     PRIMARY KEY (id_produit)
 ) ENGINE=InnoDB;
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS flux (
     type_flux         ENUM('ENTRANT','SORTANT') NOT NULL,
     nature_flux       VARCHAR(100)  NULL,
     statut_flux       ENUM('PLANIFIE','EN_COURS','REALISE') NOT NULL DEFAULT 'PLANIFIE',
-    quantite          DECIMAL(10,2) NOT NULL,
+    quantite          INT NOT NULL,
     date_flux         DATE          NOT NULL,
     heure_flux        TIME          NULL,
     ordre_execution   INT           NOT NULL DEFAULT 0,
