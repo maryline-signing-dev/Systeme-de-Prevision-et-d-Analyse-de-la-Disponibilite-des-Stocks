@@ -19,8 +19,10 @@ def create_app():
     from .routes.auth import auth_bp
     from .routes.produits import produits_bp
     from .routes.flux     import flux_bp
-    
+    from .routes.prevision import prevision_bp
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(produits_bp, url_prefix='/api/produits')
     app.register_blueprint(flux_bp,     url_prefix='/api/flux')
+    app.register_blueprint(prevision_bp, url_prefix='/api/prevision')
     return app
