@@ -1,7 +1,7 @@
 """
 Moteur de Projection Chronologique Déterministe
 
-Définition de la RUPTURE  :
+Définition de la RUPTURE :
   Une rupture n'est PAS "stock < 0".
   Une rupture EST : un flux SORTANT est déclenché alors que
   le stock disponible À CE MOMENT est insuffisant pour le satisfaire.
@@ -40,7 +40,7 @@ from ..constants import (
 
 def _get_produit(product_id: int) -> Optional[dict]:
     """Récupère le produit avec son stock initial."""
-    conn = get_connection()
+    conn   = get_connection()
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("""
@@ -72,11 +72,11 @@ def _get_flux_range(product_id: int,
       2. ENTRANT avant SORTANT à date égale   (RG-03)
       3. ordre_execution ASC                  (RG-02)
 
-    Ce tri garantit que pour une même date :
-      - Les entrées sont TOUJOURS traitées avant les sorties
-      - Ce qui maximise la disponibilité et évite les ruptures artificielles
+    MODIFICATION : utilisation systématique de date_flux_str
+    comme clé de comparaison pour éviter les incohérences
+    entre objets date Python et chaînes ISO.
     """
-    conn = get_connection()
+    conn   = get_connection()
     cursor = conn.cursor(dictionary=True)
     try:
         placeholders = ','.join(['%s'] * len(statuts))
@@ -99,15 +99,18 @@ def _get_flux_range(product_id: int,
         params = [product_id, date_from, date_to] + statuts
         cursor.execute(query, params)
         rows = cursor.fetchall()
+
         for row in rows:
             row['quantite'] = float(row['quantite'])
-                # date_flux est déjà un objet date Python — pas besoin de conversion
-                # MAIS pour generate_stock_curve on compare avec str(current)
-                # donc on convertit ici
+            # CORRECTION : normalisation systématique en str ISO
+            # pour que toutes les comparaisons et groupements
+            # fonctionnent de manière identique (date_flux_str
+            # est la clé utilisée partout dans les algorithmes)
             if hasattr(row['date_flux'], 'isoformat'):
                 row['date_flux_str'] = row['date_flux'].isoformat()
             else:
                 row['date_flux_str'] = str(row['date_flux'])
+
         return rows
     finally:
         cursor.close()
@@ -124,25 +127,21 @@ def _appliquer_flux(flux: dict, stock_courant: float) -> dict:
 
     Returns:
         {
-          'stock_apres'   : float,  stock après application
-          'rupture'       : bool,   True si flux sortant non satisfiable
-          'quantite_manquante' : float,  0 si pas de rupture
-          'satisfait'     : bool,   False si rupture (flux sortant)
+          'stock_apres'        : float
+          'rupture'            : bool
+          'quantite_manquante' : float
+          'satisfait'          : bool
         }
     """
     if flux['type_flux'] == TYPE_ENTRANT:
-        # Flux entrant : toujours satisfait, stock augmente
         return {
             'stock_apres'       : round(stock_courant + flux['quantite'], 2),
             'rupture'           : False,
             'quantite_manquante': 0.0,
             'satisfait'         : True
         }
-
     else:
-        # Flux sortant : vérifier si le stock est suffisant
         if stock_courant >= flux['quantite']:
-            # Stock suffisant → flux satisfait, pas de rupture
             return {
                 'stock_apres'       : round(stock_courant - flux['quantite'], 2),
                 'rupture'           : False,
@@ -150,9 +149,6 @@ def _appliquer_flux(flux: dict, stock_courant: float) -> dict:
                 'satisfait'         : True
             }
         else:
-            # Stock insuffisant → RUPTURE
-            # On continue le calcul avec le stock restant
-            # (le stock peut devenir négatif pour montrer l'ampleur du déficit)
             quantite_manquante = round(flux['quantite'] - stock_courant, 2)
             return {
                 'stock_apres'       : round(stock_courant - flux['quantite'], 2),
@@ -172,33 +168,8 @@ def calculate_stock_at_date(product_id: int,
     """
     Calcule le stock d'un produit à une date donnée.
 
-    Gestion des cas :
-      1. Flux entrant seul            → stock += quantite
-      2. Flux sortant seul suffisant  → stock -= quantite
-      3. Flux sortant seul insuffisant→ RUPTURE, stock -= quantite (déficit visible)
-      4. Même date entrant+sortant    → entrant traité d'abord (RG-03)
-                                        si entrant compense → pas de rupture
-      5. Même date sortant+entrant    → RG-03 inverse l'ordre automatiquement
-                                        entrant toujours traité en premier
-      6. Plusieurs sortants même date → FIFO ordre_execution
-                                        rupture sur le premier non satisfiable
-
-    Args:
-        product_id     : identifiant du produit
-        target_date    : date cible (objet date Python)
-        include_planned: inclure PLANIFIE pour projection future
-
-    Returns:
-        {
-          'stock'                 : float,
-          'produit'               : dict,
-          'ruptures'              : list[dict],  détail de chaque rupture
-          'rupture_detectee'      : bool,
-          'date_premiere_rupture' : str | None,
-          'alerte_seuil'          : bool,
-          'flux_appliques'        : list[dict],
-          'flux_count'            : int
-        }
+    CORRECTION : utilisation de flux['date_flux_str'] au lieu de
+    str(flux['date_flux']) pour la cohérence avec generate_stock_curve.
     """
     produit = _get_produit(product_id)
     if not produit:
@@ -207,7 +178,6 @@ def calculate_stock_at_date(product_id: int,
     today     = date.today()
     is_future = target_date > today
 
-    # Choisir les statuts selon le contexte
     if is_future and include_planned:
         statuts = [STATUT_REALISE, STATUT_EN_COURS, STATUT_PLANIFIE]
     elif is_future:
@@ -231,9 +201,10 @@ def calculate_stock_at_date(product_id: int,
         resultat    = _appliquer_flux(flux, stock)
         stock       = resultat['stock_apres']
 
+        # CORRECTION : utiliser date_flux_str (clé normalisée)
         entree = {
             'id_flux'           : flux['id_flux'],
-            'date'              : str(flux['date_flux']),
+            'date'              : flux['date_flux_str'],
             'type'              : flux['type_flux'],
             'nature'            : flux['nature_flux'],
             'statut'            : flux['statut_flux'],
@@ -246,14 +217,17 @@ def calculate_stock_at_date(product_id: int,
         }
         flux_appliques.append(entree)
 
-        # Enregistrer la rupture dans la liste dédiée
         if resultat['rupture']:
             ruptures.append({
-                'date'              : str(flux['date_flux']),
                 'id_flux'           : flux['id_flux'],
+                'date'              : flux['date_flux_str'],
+                'type_flux'         : flux['type_flux'],
                 'nature'            : flux['nature_flux'],
-                'quantite_demandee' : flux['quantite'],
+                'nature_flux'       : flux['nature_flux'],
+                'statut_flux'       : flux['statut_flux'],
+                'quantite'          : flux['quantite'],
                 'stock_disponible'  : round(stock_avant, 2),
+                'quantite_demandee' : flux['quantite'],
                 'quantite_manquante': resultat['quantite_manquante']
             })
 
@@ -277,17 +251,17 @@ def calculate_stock_at_date(product_id: int,
     }
 
 
-# ==========================================
-# ALGORITHME 2 — Première date de rupture 
-# ==========================================
+# ============================================================
+# ALGORITHME 2 — Première date de rupture sur un horizon
+# ============================================================
 
 def find_first_stockout(product_id: int,
                         horizon_days: int = 90) -> dict:
     """
     Détecte la première rupture à partir d'aujourd'hui.
 
-    Une rupture = flux sortant dont la quantité dépasse
-    le stock disponible au moment de son exécution.
+    CORRECTION : le flux_declencheur expose 'nature' (utilisé
+    dans les tests) en plus de 'nature_flux'.
     """
     target_date = date.today() + timedelta(days=horizon_days)
     result      = calculate_stock_at_date(
@@ -319,9 +293,9 @@ def generate_stock_curve(product_id: int,
     """
     Génère la courbe d'évolution du stock jour par jour.
 
-    Chaque point représente le stock en fin de journée,
-    après application de tous les flux de ce jour dans
-    l'ordre RG-02/RG-03.
+    CORRECTION : groupement des flux par date_flux_str
+    (clé normalisée ISO) au lieu de str(flux['date_flux'])
+    pour cohérence avec calculate_stock_at_date.
     """
     produit = _get_produit(product_id)
     if not produit:
@@ -334,20 +308,20 @@ def generate_stock_curve(product_id: int,
         [STATUT_REALISE, STATUT_EN_COURS, STATUT_PLANIFIE]
     )
 
-    # Grouper les flux par date
+    # CORRECTION : utiliser date_flux_str comme clé
     flux_par_date = {}
     for flux in flux_list:
-        d = str(flux['date_flux'])
+        d = flux['date_flux_str']          # ← était str(flux['date_flux'])
         flux_par_date.setdefault(d, []).append(flux)
 
-    labels        = []
-    values        = []
-    ruptures      = []
-    stock         = produit['stock_initial']
-    current       = date_from
+    labels   = []
+    values   = []
+    ruptures = []
+    stock    = produit['stock_initial']
+    current  = date_from
 
     while current <= date_to:
-        d_str = str(current)
+        d_str = current.isoformat()        # ← cohérent avec date_flux_str
 
         if d_str in flux_par_date:
             for flux in flux_par_date[d_str]:
@@ -358,8 +332,9 @@ def generate_stock_curve(product_id: int,
                     ruptures.append({
                         'date'              : d_str,
                         'quantite_demandee' : flux['quantite'],
-                        'stock_disponible'  : resultat['stock_apres']
-                                             + flux['quantite'],
+                        'stock_disponible'  : round(
+                            resultat['stock_apres'] + flux['quantite'], 2
+                        ),
                         'quantite_manquante': resultat['quantite_manquante']
                     })
 
@@ -368,11 +343,11 @@ def generate_stock_curve(product_id: int,
         current += timedelta(days=1)
 
     return {
-        'labels'       : labels,
-        'values'       : values,
-        'seuil_alerte' : produit['seuil_alerte'],
-        'ruptures'     : ruptures,
-        'produit'      : {
+        'labels'      : labels,
+        'values'      : values,
+        'seuil_alerte': produit['seuil_alerte'],
+        'ruptures'    : ruptures,
+        'produit'     : {
             'id'   : produit['id_produit'],
             'nom'  : produit['nom_produit'],
             'unite': produit['unite']
