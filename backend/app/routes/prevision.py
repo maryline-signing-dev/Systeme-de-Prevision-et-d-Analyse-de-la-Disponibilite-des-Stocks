@@ -2,6 +2,7 @@
 Routes API — Prévision et calcul de disponibilité
 
 Endpoints :
+  GET /api/prevision/<id>/stock         stock actuel
   GET /api/prevision/<id>/date/<date>   stock à une date
   GET /api/prevision/<id>/rupture       première date de rupture
   GET /api/prevision/<id>/courbe        courbe temporelle
@@ -23,46 +24,67 @@ prevision_bp = Blueprint('prevision', __name__)
 
 
 def _parse_date(date_str: str) -> date:
-    """Parse une date ISO YYYY-MM-DD. Lève ValueError si invalide."""
+    """Parse une date ISO YYYY-MM-DD."""
     try:
         return datetime.strptime(date_str, '%Y-%m-%d').date()
     except (ValueError, TypeError):
-        raise ValueError(f"Format de date invalide : '{date_str}'. Attendu : YYYY-MM-DD")
+        raise ValueError(
+            f"Format de date invalide : '{date_str}'. "
+            f"Attendu : YYYY-MM-DD"
+        )
+
+
+# ============================================================
+# ENDPOINT 0 — Stock actuel (aujourd'hui, flux REALISE)
+# ============================================================
+
+@prevision_bp.route('/<int:id_produit>/stock', methods=['GET'])
+@jwt_required()
+def stock_actuel(id_produit):
+    """
+    Retourne le stock actuel d'un produit
+    (flux REALISE uniquement, pas de PLANIFIE).
+    """
+    try:
+        result = calculate_stock_at_date(
+            id_produit,
+            date.today(),
+            include_planned=False
+        )
+        return success(result)
+    except ValueError as e:
+        return error(str(e), 404)
+    except Exception as e:
+        return error(f"Erreur : {str(e)}", 500)
 
 
 # ============================================================
 # ENDPOINT 1 — Stock à une date donnée
 # ============================================================
 
-@prevision_bp.route('/<int:id_produit>/date/<string:date_cible>', methods=['GET'])
+@prevision_bp.route('/<int:id_produit>/date/<string:date_cible>',
+                    methods=['GET'])
 @jwt_required()
 def stock_a_date(id_produit, date_cible):
     """
-    Calcule le stock d'un produit à une date donnée.
-
-    URL params:
-      id_produit : identifiant du produit
-      date_cible : date au format YYYY-MM-DD
+    Calcule le stock d'un produit à une date passée ou future.
 
     Query params:
       include_planned : true/false (défaut false)
-                        si true → inclut les flux PLANIFIE
-                        (utile pour projection future)
-
-    Exemples :
-      GET /api/prevision/1/date/2026-04-01
-      GET /api/prevision/1/date/2026-09-01?include_planned=true
     """
-    # Paramètre optionnel
-    include_planned = request.args.get('include_planned', 'false').lower() == 'true'
-
     try:
         target = _parse_date(date_cible)
     except ValueError as e:
         return error(str(e), 400)
 
+    include_planned = request.args.get(
+        'include_planned', 'false'
+    ).lower() == 'true'
+
     try:
-        result = calculate_stock_at_date(id_produit, target, include_planned)
+        result = calculate_stock_at_date(
+            id_produit, target, include_planned
+        )
         return success(result)
     except ValueError as e:
         return error(str(e), 404)
@@ -81,16 +103,12 @@ def premiere_rupture(id_produit):
     Détecte la première rupture sur un horizon donné.
 
     Query params:
-      horizon : nombre de jours à analyser (défaut 90)
-
-    Exemple :
-      GET /api/prevision/1/rupture
-      GET /api/prevision/1/rupture?horizon=60
+      horizon : jours (défaut 90, max 365)
     """
     try:
         horizon = int(request.args.get('horizon', DEFAULT_HORIZON_JOURS))
         if horizon <= 0 or horizon > 365:
-            return error("horizon doit être entre 1 et 365 jours", 400)
+            return error("horizon doit être entre 1 et 365", 400)
     except ValueError:
         return error("horizon doit être un entier", 400)
 
@@ -111,34 +129,30 @@ def premiere_rupture(id_produit):
 @jwt_required()
 def courbe_temporelle(id_produit):
     """
-    Génère la courbe d'évolution du stock pour graphique.
+    Génère la courbe d'évolution du stock pour Chart.js.
 
     Query params:
-      from : date de début YYYY-MM-DD (défaut aujourd'hui)
-      to   : date de fin   YYYY-MM-DD (défaut aujourd'hui + 60j)
-
-    Exemple :
-      GET /api/prevision/1/courbe
-      GET /api/prevision/1/courbe?from=2026-01-01&to=2026-12-31
+      from : date début YYYY-MM-DD (défaut aujourd'hui)
+      to   : date fin   YYYY-MM-DD (défaut +60j)
     """
     today = date.today()
 
-    # Parsing des dates avec valeurs par défaut
     try:
         date_from = _parse_date(
             request.args.get('from', str(today))
         )
         date_to = _parse_date(
-            request.args.get('to', str(today + timedelta(days=DEFAULT_COURBE_JOURS)))
+            request.args.get(
+                'to',
+                str(today + timedelta(days=DEFAULT_COURBE_JOURS))
+            )
         )
     except ValueError as e:
         return error(str(e), 400)
 
-    # Validation de la cohérence
     if date_from > date_to:
-        return error("La date 'from' doit être antérieure à 'to'", 400)
+        return error("'from' doit être antérieur à 'to'", 400)
 
-    # Limiter à 730 jours pour éviter les timeouts
     if (date_to - date_from).days > 730:
         return error("Intervalle maximum : 730 jours", 400)
 
@@ -162,11 +176,7 @@ def alertes():
     Retourne toutes les alertes pour le tableau de bord.
 
     Query params:
-      horizon : nombre de jours pour la détection (défaut 90)
-
-    Exemple :
-      GET /api/prevision/alertes
-      GET /api/prevision/alertes?horizon=30
+      horizon : jours (défaut 90)
     """
     try:
         horizon = int(request.args.get('horizon', DEFAULT_HORIZON_JOURS))

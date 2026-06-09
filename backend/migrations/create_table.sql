@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS produit (
     nom_produit         VARCHAR(200)  NOT NULL,
     categorie           VARCHAR(100)  NULL,
     marque              VARCHAR(100)  NULL,
-    stock_initial       DECIMALINT NOT NULL DEFAULT 0,
+    stock_initial       INT NOT NULL DEFAULT 0,
     date_initialisation DATE          NOT NULL,
     unite               VARCHAR(20)   NOT NULL DEFAULT 'unite',
     seuil_alerte        INT NOT NULL DEFAULT 0,

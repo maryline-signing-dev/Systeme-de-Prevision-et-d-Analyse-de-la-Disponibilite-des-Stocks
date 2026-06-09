@@ -9,27 +9,26 @@ FRONTEND_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', '..', 'frontend')
 )
 
+
 def create_app():
-    app = Flask(
-        __name__,
-        static_folder=FRONTEND_DIR,
-        static_url_path=''
-    )
+    # On ne passe PAS static_folder ici pour éviter les conflits
+    # avec les routes API. Les fichiers statiques sont servis
+    # explicitement via send_from_directory.
+    app = Flask(__name__)
     app.config.from_object(Config)
 
     JWTManager(app)
 
-    # CORS permissif pour le développement
+    # CORS permissif — autorise toutes les origines en dev
     CORS(app,
          origins="*",
          allow_headers=["Content-Type", "Authorization"],
          methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-         supports_credentials=False
-    )
+         supports_credentials=False)
 
     init_pool(app)
 
-    # ── Blueprints API ──────────────────────────────
+    # ── Blueprints API (/api/...) ───────────────────────────
     from .routes.auth      import auth_bp
     from .routes.produits  import produits_bp
     from .routes.flux      import flux_bp
@@ -40,17 +39,19 @@ def create_app():
     app.register_blueprint(flux_bp,      url_prefix='/api/flux')
     app.register_blueprint(prevision_bp, url_prefix='/api/prevision')
 
-    # ── Route de diagnostic ─────────────────────────
+    # ── Route de diagnostic ─────────────────────────────────
     @app.route('/api/ping')
     def ping():
-        """Route de test — vérifie que l'API répond."""
-        return jsonify({
-            "success" : True,
-            "message" : "Flask opérationnel",
-            "frontend": FRONTEND_DIR
-        })
+        return jsonify({"success": True, "message": "Flask OK"})
 
-    # ── Routes Frontend ─────────────────────────────
+    # ── Fichiers statiques frontend (css, js, etc.) ─────────
+    # Route dédiée pour servir CSS, JS, images
+    # Préfixe /static/ évite tout conflit avec les routes API
+    @app.route('/static/<path:filename>')
+    def static_files(filename):
+        return send_from_directory(FRONTEND_DIR, filename)
+
+    # ── Pages HTML — préfixe /app/ pour éviter les conflits ─
     @app.route('/')
     def index():
         return send_from_directory(FRONTEND_DIR, 'login.html')
@@ -63,19 +64,19 @@ def create_app():
     def dashboard_page():
         return send_from_directory(FRONTEND_DIR, 'dashboard.html')
 
-    @app.route('/produits')
+    @app.route('/app/produits')
     def produits_page():
         return send_from_directory(FRONTEND_DIR, 'produits.html')
 
-    @app.route('/flux')
+    @app.route('/app/flux')
     def flux_page():
         return send_from_directory(FRONTEND_DIR, 'flux.html')
 
-    @app.route('/prevision')
+    @app.route('/app/prevision')
     def prevision_page():
         return send_from_directory(FRONTEND_DIR, 'prevision.html')
 
-    # ── Handlers d'erreur ───────────────────────────
+    # ── Handlers d'erreur ───────────────────────────────────
     @app.errorhandler(404)
     def not_found(e):
         if request.path.startswith('/api/'):

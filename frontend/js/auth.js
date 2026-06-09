@@ -1,6 +1,10 @@
 /**
- * auth.js — Guard d'authentification
-
+ * auth.js — Guard JWT
+ * À inclure sur toutes les pages protégées SAUF login.html
+ *
+ * CORRECTION : les redirections utilisent /app/produits,
+ * /app/flux, /app/prevision pour éviter les conflits avec
+ * les blueprints API /api/produits etc.
  */
 
 function requireAuth() {
@@ -19,26 +23,18 @@ function logout() {
 }
 
 function getAdminInfo() {
-    const raw = localStorage.getItem('admin_info');
     try {
+        const raw = localStorage.getItem('admin_info');
         return raw ? JSON.parse(raw) : null;
-    } catch {
-        return null;
-    }
+    } catch { return null; }
 }
 
 function displayAdminName() {
     const el    = document.getElementById('admin-name');
     const admin = getAdminInfo();
-    if (el && admin) {
-        el.textContent = admin.nom || admin.email || 'Admin';
-    }
+    if (el && admin) el.textContent = admin.nom || admin.email || 'Admin';
 }
 
-// Vérification automatique au chargement
-// (ce fichier n'est PAS inclus sur login.html)
 document.addEventListener('DOMContentLoaded', () => {
-    if (requireAuth()) {
-        displayAdminName();
-    }
+    if (requireAuth()) displayAdminName();
 });

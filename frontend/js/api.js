@@ -1,9 +1,12 @@
 /**
  * api.js — Couche réseau centralisée
+ *
+ * CORRECTION : API_BASE utilise window.location.origin pour
+ * fonctionner que la page soit ouverte depuis Flask ou en direct.
+ * Les chemins des assets CSS/JS utilisent le préfixe /static/.
  */
 
-// Détection automatique : même hôte que la page servie par Flask
-const API_BASE = 'http://127.0.0.1:5000/api';
+const API_BASE = window.location.origin + '/api';
 
 async function apiCall(endpoint, method = 'GET', body = null) {
     const token = localStorage.getItem('access_token');
@@ -16,48 +19,36 @@ async function apiCall(endpoint, method = 'GET', body = null) {
         }
     };
 
-    if (body) {
-        options.body = JSON.stringify(body);
-    }
+    if (body) options.body = JSON.stringify(body);
 
     try {
         const response = await fetch(`${API_BASE}${endpoint}`, options);
 
-        // Log pour debug (à supprimer après correction)
-        console.log(`[API] ${method} ${endpoint} → ${response.status}`);
-
         if (response.status === 401) {
-            console.warn('[API] Token invalide ou expiré');
             localStorage.removeItem('access_token');
             localStorage.removeItem('admin_info');
-            if (!window.location.pathname.includes('login') &&
-                window.location.pathname !== '/') {
+            const p = window.location.pathname;
+            if (p !== '/' && p !== '/login') {
                 window.location.href = '/login';
             }
             return null;
         }
 
-        const data = await response.json();
-        return data;
+        return await response.json();
 
     } catch (err) {
         console.error('[API] Erreur réseau :', err);
-        showAlert(
-            'Impossible de contacter le serveur. ' +
-            'Vérifier que Flask est démarré sur le port 5000.',
-            'danger'
-        );
+        showAlert('Impossible de contacter le serveur Flask.', 'danger');
         return null;
     }
 }
 
+/* ── Alerte toast ───────────────────────────────────────────── */
 function showAlert(message, type = 'info', duree = 4000) {
     let container = document.getElementById('alert-container');
     if (!container) {
         container = document.createElement('div');
-        container.id        = 'alert-container';
-        container.className = 'position-fixed top-0 end-0 p-3';
-        container.style.zIndex = '9999';
+        container.id = 'alert-container';
         document.body.appendChild(container);
     }
 
@@ -70,11 +61,10 @@ function showAlert(message, type = 'info', duree = 4000) {
     };
 
     container.insertAdjacentHTML('beforeend', `
-        <div id="${id}"
-             class="alert alert-${type} alert-dismissible fade show
-                    d-flex align-items-center shadow-sm mb-2"
-             role="alert">
-            <i class="bi ${icons[type] || icons.info} me-2"></i>
+        <div id="${id}" class="alert alert-${type} alert-dismissible
+             fade show d-flex align-items-center gap-2 shadow-sm mb-2"
+             role="alert" style="font-size:0.85rem;">
+            <i class="bi ${icons[type] || icons.info}"></i>
             <span>${message}</span>
             <button type="button" class="btn-close ms-auto"
                     data-bs-dismiss="alert"></button>
@@ -83,25 +73,21 @@ function showAlert(message, type = 'info', duree = 4000) {
     if (duree > 0) {
         setTimeout(() => {
             const el = document.getElementById(id);
-            if (el) {
-                el.classList.remove('show');
-                setTimeout(() => el.remove(), 300);
-            }
+            if (el) { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }
         }, duree);
     }
 }
 
+/* ── Loader global ──────────────────────────────────────────── */
 function showLoader() {
     if (document.getElementById('spinner-overlay')) return;
-    const el     = document.createElement('div');
-    el.id        = 'spinner-overlay';
+    const el = document.createElement('div');
+    el.id = 'spinner-overlay';
     el.className = 'spinner-overlay';
-    el.innerHTML = `
-        <div class="text-center">
-            <div class="spinner-border text-primary"
-                 style="width:3rem;height:3rem;"></div>
-            <div class="mt-2 text-muted">Calcul en cours...</div>
-        </div>`;
+    el.innerHTML = `<div class="text-center">
+        <div class="spinner-border text-primary" style="width:2.5rem;height:2.5rem;"></div>
+        <div class="mt-2 text-muted small">Calcul en cours...</div>
+    </div>`;
     document.body.appendChild(el);
 }
 
@@ -110,14 +96,13 @@ function hideLoader() {
     if (el) el.remove();
 }
 
+/* ── Utilitaires ────────────────────────────────────────────── */
 function formatDate(dateStr) {
     if (!dateStr) return '—';
     try {
-        const [y, m, d] = dateStr.split('-');
+        const [y, m, d] = String(dateStr).split('-');
         return `${d}/${m}/${y}`;
-    } catch {
-        return dateStr;
-    }
+    } catch { return dateStr; }
 }
 
 function badgeStatut(statut) {
@@ -126,18 +111,11 @@ function badgeStatut(statut) {
         'EN_COURS': 'badge-en-cours',
         'REALISE' : 'badge-realise'
     };
-    return `<span class="badge ${map[statut] || 'bg-secondary'}">
-                ${statut}
-            </span>`;
+    return `<span class="badge ${map[statut] || 'badge-planifie'}">${statut}</span>`;
 }
 
 function badgeType(type) {
-    const map = {
-        'ENTRANT': 'badge-entrant',
-        'SORTANT': 'badge-sortant'
-    };
     const icon = type === 'ENTRANT' ? '↑' : '↓';
-    return `<span class="badge ${map[type] || 'bg-secondary'}">
-                ${icon} ${type}
-            </span>`;
+    const cls  = type === 'ENTRANT' ? 'badge-entrant' : 'badge-sortant';
+    return `<span class="badge ${cls}">${icon} ${type}</span>`;
 }
