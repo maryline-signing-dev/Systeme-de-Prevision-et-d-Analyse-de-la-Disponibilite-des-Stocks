@@ -17,19 +17,19 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container-fluid px-4">
-        <a class="navbar-brand fw-bold" href="dashboard.html">
+        <a class="navbar-brand fw-bold" href="/dashboard">
             <i class="bi bi-boxes me-1"></i> SIPDS
             <span>Prévision des Stocks</span>
         </a>
         <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-3">
-            <a class="nav-link text-white" href="dashboard.html">
+            <a class="nav-link text-white" href="/dashboard">
                 <i class="bi bi-speedometer2 me-1"></i> Dashboard
             </a>
-            <a class="nav-link text-white" href="produits.html">
+            <a class="nav-link text-white" href="/produits">
                 <i class="bi bi-grid-3x3-gap me-1"></i> Produits
             </a>
             <a class="nav-link text-white active fw-semibold"
-               href="prevision.html">
+               href="/prevision">
                 <i class="bi bi-graph-up-arrow me-1"></i> Prévision
             </a>
             <span class="text-white small opacity-75">
@@ -498,7 +498,7 @@ async function surChangementProduit() {
 
         // Liens rapides
         document.getElementById('lien-flux-produit').href =
-            `flux.html?id=${id}`;
+            `/flux?id=${id}`;
         document.getElementById('liens-rapides').style.display = 'block';
     }
 }

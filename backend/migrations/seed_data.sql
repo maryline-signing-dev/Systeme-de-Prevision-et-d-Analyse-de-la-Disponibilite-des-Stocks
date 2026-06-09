@@ -7,7 +7,7 @@ USE stock_prevision;
 -- Mot de passe : admin123
 INSERT INTO admin (nom, email, mot_de_passe_hash) VALUES
 ('Admin', 'adminstock@gmail.com',
- '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj9vFZ8E4Cqm');
+ '$2b$12$eJZgyM92ov5aG1Aorh.dIOrGtgPPCJkzo9Thb2HmXrTOy8FIoo6JW');
 
 -- ============================================================
 -- PRODUITS (5 produits avec scénarios différents)

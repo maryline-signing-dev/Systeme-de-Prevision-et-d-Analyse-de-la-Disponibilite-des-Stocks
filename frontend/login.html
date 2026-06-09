@@ -3,39 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Connexion</title>
-
-    <!-- Bootstrap 5 -->
+    <title>Connexion — SIPDS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
           rel="stylesheet">
-    <!-- Styles personnalisés -->
     <link href="css/style.css" rel="stylesheet">
 </head>
-
 <body>
 
 <div class="login-wrapper">
     <div class="login-card card p-4 p-md-5">
 
-        <!-- Logo et titre -->
         <div class="text-center mb-4">
             <div class="login-logo mb-2">
                 <i class="bi bi-boxes"></i>
             </div>
-            <!-- <h2 class="fw-bold text-dark">SIPDS</h2> -->
+            <h2 class="fw-bold text-dark">SIPDS</h2>
             <p class="text-muted small">
                 Système de Prévision et d'Analyse<br>
                 de la Disponibilité des Stocks
             </p>
         </div>
 
-        <!-- Zone d'alerte -->
         <div id="alert-login"></div>
 
-        <!-- Formulaire -->
         <form id="login-form" novalidate>
 
             <div class="mb-3">
@@ -48,9 +40,6 @@
                        placeholder="nom@domaine.extension"
                        autocomplete="email"
                        required>
-                <div class="invalid-feedback">
-                    Votre email doit respecter la syntaxe nom@domaine.extension
-                </div>
             </div>
 
             <div class="mb-4">
@@ -66,13 +55,9 @@
                            required>
                     <button class="btn btn-outline-secondary"
                             type="button"
-                            id="toggle-pwd"
-                            title="Afficher/masquer">
-                        <i class="bi bi-eye" id="eye-icon"></i>
+                            id="toggle-pwd">
+                        <i class="bi bi-eye" id="eye-icon"></i>.
                     </button>
-                </div>
-                <div class="invalid-feedback">
-                    Veuillez saisir votre mot de passe.
                 </div>
             </div>
 
@@ -84,91 +69,105 @@
                     Se connecter
                 </span>
                 <span id="btn-spinner" class="d-none">
-                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    <span class="spinner-border spinner-border-sm
+                                 me-1"></span>
                     Connexion...
                 </span>
             </button>
+
         </form>
 
-        <!-- Pied de page -->
-        <!-- <p class="text-center text-muted small mt-4 mb-0">
-            ENSPD Douala — GL4 · 2025/2026
-        </p> -->
 
     </div>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<!-- API Layer -->
 <script src="js/api.js"></script>
 
 <script>
-    // Si déjà connecté → aller directement au dashboard
-    if (localStorage.getItem('access_token')) {
-        window.location.href = 'dashboard.html';
-    }
 
-    // Afficher/masquer le mot de passe
-    document.getElementById('toggle-pwd').addEventListener('click', () => {
-        const input   = document.getElementById('password');
-        const icon    = document.getElementById('eye-icon');
-        const visible = input.type === 'text';
-        input.type    = visible ? 'password' : 'text';
-        icon.className = visible ? 'bi bi-eye' : 'bi bi-eye-slash';
-    });
-
-    // Soumission du formulaire
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const email    = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-
-        // Validation HTML5
-        if (!email || !password) {
-            document.getElementById('login-form').classList.add('was-validated');
-            return;
+    // Si déjà connecté → dashboard directement
+    (function checkAlreadyLogged() {
+        if (localStorage.getItem('access_token')) {
+            window.location.href = '/dashboard';
         }
+    })();
 
-        // Afficher le spinner
-        document.getElementById('btn-text').classList.add('d-none');
-        document.getElementById('btn-spinner').classList.remove('d-none');
-        document.getElementById('btn-login').disabled = true;
+    // Afficher/masquer mot de passe
+    document.getElementById('toggle-pwd')
+        .addEventListener('click', () => {
+            const input   = document.getElementById('password');
+            const icon    = document.getElementById('eye-icon');
+            const visible = input.type === 'text';
+            input.type    = visible ? 'password' : 'text';
+            icon.className = visible
+                ? 'bi bi-eye'
+                : 'bi bi-eye-slash';
+        });
 
-        const result = await apiCall('/auth/login', 'POST', { email, password });
+    // Soumission
+    document.getElementById('login-form')
+        .addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-        // Réinitialiser le bouton
-        document.getElementById('btn-text').classList.remove('d-none');
-        document.getElementById('btn-spinner').classList.add('d-none');
-        document.getElementById('btn-login').disabled = false;
+            const email    = document
+                .getElementById('email').value.trim();
+            const password = document
+                .getElementById('password').value;
 
-        if (result && result.success) {
-            // Stocker le token et les infos admin
-            localStorage.setItem('access_token', result.data.access_token);
-            localStorage.setItem('admin_info',
-                JSON.stringify(result.data.admin));
+            if (!email || !password) {
+                document.getElementById('alert-login').innerHTML = `
+                    <div class="alert alert-warning small mb-3">
+                        Veuillez remplir tous les champs.
+                    </div>`;
+                return;
+            }
 
-            // Redirection vers le dashboard
-            window.location.href = 'dashboard.html';
+            // Spinner
+            document.getElementById('btn-text')
+                .classList.add('d-none');
+            document.getElementById('btn-spinner')
+                .classList.remove('d-none');
+            document.getElementById('btn-login').disabled = true;
 
-        } else {
-            // Afficher l'erreur dans le formulaire
-            const msg = result?.message || 'Erreur de connexion. Réessayer.';
-            document.getElementById('alert-login').innerHTML = `
-                <div class="alert alert-danger d-flex align-items-center mb-3">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <span>${msg}</span>
-                </div>`;
+            // Appel API
+            const result = await apiCall(
+                '/auth/login', 'POST', { email, password }
+            );
 
-            // Secouer le formulaire visuellement
-            const card = document.querySelector('.login-card');
-            card.style.animation = 'none';
-            card.offsetHeight; // reflow
-            card.style.animation = '';
-        }
-    });
+            // Réinitialiser bouton
+            document.getElementById('btn-text')
+                .classList.remove('d-none');
+            document.getElementById('btn-spinner')
+                .classList.add('d-none');
+            document.getElementById('btn-login').disabled = false;
+
+            if (result && result.success) {
+                // Stocker token et infos
+                localStorage.setItem(
+                    'access_token',
+                    result.data.access_token
+                );
+                localStorage.setItem(
+                    'admin_info',
+                    JSON.stringify(result.data.admin)
+                );
+                // Redirection
+                window.location.href = '/dashboard';
+
+            } else {
+                const msg = result?.message
+                    || 'Identifiants incorrects.';
+                document.getElementById('alert-login').innerHTML = `
+                    <div class="alert alert-danger
+                                d-flex align-items-center mb-3">
+                        <i class="bi bi-exclamation-triangle-fill
+                                   me-2"></i>
+                        <span>${msg}</span>
+                    </div>`;
+            }
+        });
+
 </script>
-
 </body>
 </html>

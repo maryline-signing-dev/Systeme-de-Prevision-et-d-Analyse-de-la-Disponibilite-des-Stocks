@@ -15,19 +15,19 @@
 <!-- ========== NAVBAR ========== -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container-fluid px-4">
-        <a class="navbar-brand fw-bold" href="dashboard.html">
+        <a class="navbar-brand fw-bold" href="/backend">
             <i class="bi bi-boxes me-1"></i> SIPDS
             <span>Prévision des Stocks</span>
         </a>
         <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-3">
             <a class="nav-link text-white active fw-semibold"
-               href="dashboard.html">
+               href="/dashboard">
                 <i class="bi bi-speedometer2 me-1"></i> Dashboard
             </a>
-            <a class="nav-link text-white" href="produits.html">
+            <a class="nav-link text-white" href="/produits">
                 <i class="bi bi-grid-3x3-gap me-1"></i> Produits
             </a>
-            <a class="nav-link text-white" href="prevision.html">
+            <a class="nav-link text-white" href="/prevision">
                 <i class="bi bi-graph-up-arrow me-1"></i> Prévision
             </a>
             <span class="text-white small opacity-75">
@@ -184,106 +184,168 @@ document.getElementById('date-affichage').textContent =
         month: 'long',   day: 'numeric'
     });
 
-async function chargerDashboard() {
-    const horizon = 90;
-    document.getElementById('cartes-resume').innerHTML = `
-        <div class="col-12 text-center py-3">
-            <div class="spinner-border text-primary"></div>
-        </div>`;
+    async function chargerDashboard() {
+        const horizon = 90;
+    
+        // Afficher spinner
+        document.getElementById('cartes-resume').innerHTML = `
+            <div class="col-12 text-center py-4">
+                <div class="spinner-border text-primary"></div>
+                <p class="text-muted mt-2 small">Chargement...</p>
+            </div>`;
+    
+        // Masquer toutes les sections
+        ['section-ruptures-actuelles',
+         'section-ruptures-prevues',
+         'section-alertes-seuil',
+         'section-ok'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    
+        const result = await apiCall(
+            `/prevision/alertes?horizon=${horizon}`
+        );
+    
+        // Vérification explicite
+        if (!result) {
+            document.getElementById('cartes-resume').innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Impossible de contacter le serveur.
+                        Vérifier que Flask est démarré.
+                    </div>
+                </div>`;
+            return;
+        }
+    
+        // DEBUG — afficher la structure reçue
+        console.log('[Dashboard] Structure reçue :', JSON.stringify(result, null, 2));
 
-    const result = await apiCall(`/prevision/alertes?horizon=${horizon}`);
-    if (!result || !result.success) {
-        showAlert('Erreur lors du chargement du dashboard.', 'danger');
-        return;
-    }
+        if (!result.success) {
+            document.getElementById('cartes-resume').innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        Erreur : ${result.message || 'Réponse invalide'}
+                    </div>
+                </div>`;
+            return;
+        }
+    
+        const d = result.data || result;
+        const r = d.resume || d;
+    
+        // Valeurs par défaut si clés manquantes
+        const nb_ruptures_actuelles = r.nb_ruptures_actuelles ?? 0;
+        const nb_ruptures_prevues   = r.nb_ruptures_prevues   ?? 0;
+        const nb_alertes_seuil      = r.nb_alertes_seuil      ?? 0;
+        const nb_produits_ok        = r.nb_produits_ok         ?? 0;
 
-    const d = result.data;
-    const r = d.resume;
+        const ruptures_actuelles    = d.ruptures_actuelles     ?? [];
+        const ruptures_prevues      = d.ruptures_prevues       ?? [];
+        const alertes_seuil         = d.alertes_seuil      
 
-    // ---- Cartes résumé ----
-    document.getElementById('cartes-resume').innerHTML = `
-        <div class="col-6 col-md-3">
-            <div class="card stat-card text-white bg-danger h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <i class="bi bi-x-circle-fill stat-icon"></i>
-                    <div>
-                        <div class="stat-value">${r.nb_ruptures_actuelles}</div>
-                        <div class="stat-label">Rupture(s) actuelle(s)</div>
+        // Cartes résumé
+        document.getElementById('cartes-resume').innerHTML = `
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-white bg-danger h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <i class="bi bi-x-circle-fill stat-icon"></i>
+                        <div>
+                            <div class="stat-value">
+                                ${r.nb_ruptures_actuelles}
+                            </div>
+                            <div class="stat-label">
+                                Rupture(s) actuelle(s)
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card stat-card text-dark bg-warning h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <i class="bi bi-exclamation-triangle-fill stat-icon"></i>
-                    <div>
-                        <div class="stat-value">${r.nb_ruptures_prevues}</div>
-                        <div class="stat-label">Rupture(s) prévue(s)</div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-dark bg-warning h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <i class="bi bi-exclamation-triangle-fill
+                                   stat-icon"></i>
+                        <div>
+                            <div class="stat-value">
+                                ${r.nb_ruptures_prevues}
+                            </div>
+                            <div class="stat-label">
+                                Rupture(s) prévue(s)
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card stat-card text-dark bg-info h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <i class="bi bi-bell-fill stat-icon"></i>
-                    <div>
-                        <div class="stat-value">${r.nb_alertes_seuil}</div>
-                        <div class="stat-label">Alerte(s) seuil</div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-dark bg-info h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <i class="bi bi-bell-fill stat-icon"></i>
+                        <div>
+                            <div class="stat-value">
+                                ${r.nb_alertes_seuil}
+                            </div>
+                            <div class="stat-label">Alerte(s) seuil</div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card stat-card text-white bg-success h-100">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <i class="bi bi-check-circle-fill stat-icon"></i>
-                    <div>
-                        <div class="stat-value">${r.nb_produits_ok}</div>
-                        <div class="stat-label">Produit(s) OK</div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card text-white bg-success h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <i class="bi bi-check-circle-fill stat-icon"></i>
+                        <div>
+                            <div class="stat-value">
+                                ${r.nb_produits_ok}
+                            </div>
+                            <div class="stat-label">Produit(s) OK</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>`;
-
-    // ---- Ruptures actuelles ----
-    const secRA = document.getElementById('section-ruptures-actuelles');
-    if (d.ruptures_actuelles.length > 0) {
-        secRA.style.removeProperty('display');
-        document.getElementById('tbody-ruptures-actuelles').innerHTML =
-            d.ruptures_actuelles.map(p => `
+            </div>`;
+    
+        // Ruptures actuelles
+        const secRA = document.getElementById(
+            'section-ruptures-actuelles');
+        if (d.ruptures_actuelles.length > 0) {
+            secRA.style.removeProperty('display');
+            document.getElementById('tbody-ruptures-actuelles')
+                .innerHTML = d.ruptures_actuelles.map(p => `
                 <tr class="table-danger">
                     <td class="fw-semibold">${p.nom_produit}</td>
-                    <td>
-                        <span class="text-danger fw-bold">
-                            ${p.stock_actuel} ${p.unite}
-                        </span>
+                    <td class="text-danger fw-bold">
+                        ${p.stock_actuel} ${p.unite}
                     </td>
                     <td>${p.nb_ruptures} rupture(s)</td>
                     <td>${formatDate(p.derniere_rupture)}</td>
                     <td>
-                        <a href="prevision.html?id=${p.id_produit}"
+                        <a href="/prevision?id=${p.id_produit}"
                            class="btn btn-danger btn-action">
-                            <i class="bi bi-graph-up me-1"></i>Analyser
+                            <i class="bi bi-graph-up me-1"></i>
+                            Analyser
                         </a>
                     </td>
                 </tr>`).join('');
-    } else {
-        secRA.style.display = 'none';
-    }
-
-    // ---- Ruptures prévues ----
-    const secRP = document.getElementById('section-ruptures-prevues');
-    document.getElementById('label-horizon').textContent =
-        `sur les ${horizon} prochains jours`;
-    if (d.ruptures_prevues.length > 0) {
-        secRP.style.removeProperty('display');
-        document.getElementById('tbody-ruptures-prevues').innerHTML =
-            d.ruptures_prevues.map(p => {
-                const urgence = p.jours_restants <= 7  ? 'table-danger'
-                              : p.jours_restants <= 30 ? 'table-warning'
-                              : '';
+        } else {
+            secRA.style.display = 'none';
+        }
+    
+        // Ruptures prévues
+        const secRP = document.getElementById(
+            'section-ruptures-prevues');
+        document.getElementById('label-horizon').textContent =
+            `sur les ${horizon} prochains jours`;
+    
+        if (d.ruptures_prevues.length > 0) {
+            secRP.style.removeProperty('display');
+            document.getElementById('tbody-ruptures-prevues')
+                .innerHTML = d.ruptures_prevues.map(p => {
+                const urgence =
+                    p.jours_restants <= 7  ? 'table-danger'  :
+                    p.jours_restants <= 30 ? 'table-warning' : '';
                 return `
                 <tr class="${urgence}">
                     <td class="fw-semibold">${p.nom_produit}</td>
@@ -291,58 +353,74 @@ async function chargerDashboard() {
                     <td>${formatDate(p.date_rupture)}</td>
                     <td>
                         <span class="badge ${
-                            p.jours_restants <= 7  ? 'bg-danger' :
-                            p.jours_restants <= 30 ? 'bg-warning text-dark' :
-                            'bg-secondary'}">
+                            p.jours_restants <= 7  ? 'bg-danger'  :
+                            p.jours_restants <= 30 ?
+                            'bg-warning text-dark'  : 'bg-secondary'}">
                             J−${p.jours_restants}
                         </span>
                     </td>
                     <td>${p.quantite_manquante} ${p.unite}</td>
                     <td>
-                        <a href="prevision.html?id=${p.id_produit}"
+                        <a href="/prevision?id=${p.id_produit}"
                            class="btn btn-warning btn-action text-dark">
-                            <i class="bi bi-graph-up me-1"></i>Analyser
+                            <i class="bi bi-graph-up me-1"></i>
+                            Analyser
                         </a>
                     </td>
                 </tr>`;
             }).join('');
-    } else {
-        secRP.style.display = 'none';
-    }
-
-    // ---- Alertes seuil ----
-    const secAS = document.getElementById('section-alertes-seuil');
-    if (d.alertes_seuil.length > 0) {
-        secAS.style.removeProperty('display');
-        document.getElementById('tbody-alertes-seuil').innerHTML =
-            d.alertes_seuil.map(p => `
+        } else {
+            secRP.style.display = 'none';
+        }
+    
+        // Alertes seuil
+        const secAS = document.getElementById(
+            'section-alertes-seuil');
+        if (d.alertes_seuil.length > 0) {
+            secAS.style.removeProperty('display');
+            document.getElementById('tbody-alertes-seuil')
+                .innerHTML = d.alertes_seuil.map(p => `
                 <tr class="table-info">
                     <td class="fw-semibold">${p.nom_produit}</td>
                     <td>${p.stock_actuel} ${p.unite}</td>
                     <td>${p.seuil_alerte} ${p.unite}</td>
                     <td>
-                        <a href="prevision.html?id=${p.id_produit}"
+                        <a href="/prevision?id=${p.id_produit}"
                            class="btn btn-info btn-action text-dark">
-                            <i class="bi bi-graph-up me-1"></i>Analyser
+                            <i class="bi bi-graph-up me-1"></i>
+                            Analyser
                         </a>
                     </td>
                 </tr>`).join('');
-    } else {
-        secAS.style.display = 'none';
+        } else {
+            secAS.style.display = 'none';
+        }
+    
+        // Tout va bien
+        const toutOK =
+            d.ruptures_actuelles.length === 0 &&
+            d.ruptures_prevues.length   === 0 &&
+            d.alertes_seuil.length      === 0;
+    
+        const secOK = document.getElementById('section-ok');
+        secOK.style.display = toutOK ? 'block' : 'none';
+        if (toutOK) {
+            document.getElementById('horizon-ok').textContent =
+                horizon;
+        }
     }
-
-    // ---- Tout va bien ----
-    const secOK = document.getElementById('section-ok');
-    const toutOK = d.ruptures_actuelles.length === 0
-                && d.ruptures_prevues.length   === 0
-                && d.alertes_seuil.length      === 0;
-    secOK.style.display = toutOK ? 'block' : 'none';
-    document.getElementById('horizon-ok').textContent = horizon;
-}
+    
+    // Lancer au chargement
+    chargerDashboard();
 
 // Charger au démarrage
 chargerDashboard();
 
+const token = localStorage.getItem('access_token');
+
+if (!token) {
+    window.location.href = '/login';
+}
 </script>
 </body>
 </html>

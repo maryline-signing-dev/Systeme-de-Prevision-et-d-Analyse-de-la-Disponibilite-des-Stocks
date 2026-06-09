@@ -1,57 +1,44 @@
 /**
- * auth.js — Gestion de l'authentification côté client
- * Protège les pages qui nécessitent une connexion.
+ * auth.js — Guard d'authentification
+
  */
 
-/**
- * Vérifie qu'un token JWT est présent.
- * Si absent : redirige vers login.html
- * À appeler en début de chaque page protégée.
- */
 function requireAuth() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-        window.location.href = 'login.html';
+        window.location.href = '/login';
         return false;
     }
     return true;
 }
 
-/**
- * Déconnecte l'administrateur.
- * Supprime le token et redirige vers login.
- */
 function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('admin_info');
-    window.location.href = 'login.html';
+    window.location.href = '/login';
 }
 
-/**
- * Retourne les infos de l'admin connecté.
- */
 function getAdminInfo() {
-    const info = localStorage.getItem('admin_info');
-    return info ? JSON.parse(info) : null;
+    const raw = localStorage.getItem('admin_info');
+    try {
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
 }
 
-/**
- * Affiche le nom de l'admin dans l'élément #admin-name si présent.
- */
 function displayAdminName() {
     const el    = document.getElementById('admin-name');
     const admin = getAdminInfo();
     if (el && admin) {
-        el.textContent = admin.nom || admin.email;
+        el.textContent = admin.nom || admin.email || 'Admin';
     }
 }
 
-// Protection automatique au chargement
-// (ne s'applique pas sur login.html)
+// Vérification automatique au chargement
+// (ce fichier n'est PAS inclus sur login.html)
 document.addEventListener('DOMContentLoaded', () => {
-    const page = window.location.pathname;
-    if (!page.includes('login')) {
-        requireAuth();
+    if (requireAuth()) {
         displayAdminName();
     }
 });

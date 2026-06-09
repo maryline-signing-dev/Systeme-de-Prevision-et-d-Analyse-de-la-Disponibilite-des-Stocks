@@ -15,18 +15,18 @@
 <!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container-fluid px-4">
-        <a class="navbar-brand fw-bold" href="dashboard.html">
+        <a class="navbar-brand fw-bold" href="/dashboard">
             <i class="bi bi-boxes me-1"></i> SIPDS
             <span>Prévision des Stocks</span>
         </a>
         <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-3">
-            <a class="nav-link text-white" href="dashboard.html">
+            <a class="nav-link text-white" href="/dashboard">
                 <i class="bi bi-speedometer2 me-1"></i> Dashboard
             </a>
-            <a class="nav-link text-white" href="produits.html">
+            <a class="nav-link text-white" href="/produits">
                 <i class="bi bi-grid-3x3-gap me-1"></i> Produits
             </a>
-            <a class="nav-link text-white" href="prevision.html">
+            <a class="nav-link text-white" href="/prevision">
                 <i class="bi bi-graph-up-arrow me-1"></i> Prévision
             </a>
             <span class="text-white small opacity-75">
@@ -48,7 +48,7 @@
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-1">
                     <li class="breadcrumb-item">
-                        <a href="produits.html">Produits</a>
+                        <a href="/produits">Produits</a>
                     </li>
                     <li class="breadcrumb-item active" id="breadcrumb-produit">
                         Flux
@@ -65,7 +65,7 @@
             <small class="text-muted" id="sous-titre-produit"></small>
         </div>
         <div class="d-flex gap-2">
-            <a href="prevision.html"
+            <a href="/prevision"
                id="lien-prevision"
                class="btn btn-outline-success">
                 <i class="bi bi-graph-up me-1"></i> Prévision
@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Lien prévision
     document.getElementById('lien-prevision').href =
-        `prevision.html?id=${idProduit}`;
+        `/prevision?id=${idProduit}`;
 
     // Charger le produit
     const resProduit = await apiCall(`/produits/${idProduit}`);
